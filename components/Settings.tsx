@@ -35,7 +35,7 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [notifyStatus, setNotifyStatus] = useState<'default' | 'granted' | 'denied'>('default');
   const [pushResult, setPushResult] = useState<{ target: string; message: string } | null>(null);
-  const [pushing, setPushing] = useState<string | null>(null);
+  const [pushing, setPushing] = useState<string | null>(null); // 'first' | 'followup' | 'final' | 'all' | null
   const [pushLogs, setPushLogs] = useState<any[]>([]);
   const [showLogs, setShowLogs] = useState(false);
 
@@ -99,6 +99,40 @@ export default function Settings() {
         icon: '/icon-192.png',
       });
     }
+  };
+
+  // 一键测试全部 3 次提醒
+  const testAllPush = async () => {
+    setPushing('all');
+    setPushResult(null);
+    const types: ('first' | 'followup' | 'final')[] = ['first', 'followup', 'final'];
+    const labels = ['第1次', '第2次', '第3次'];
+    const failed: string[] = [];
+
+    for (let i = 0; i < types.length; i++) {
+      try {
+        const res = await fetch('/api/push', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: types[i], period: 'morning' }),
+        });
+        const data = await res.json();
+        if (!data.success) failed.push(`${labels[i]}: ${data.message || '失败'}`);
+      } catch (err: any) {
+        failed.push(`${labels[i]}: ${err.message}`);
+      }
+      // 间隔 1.5 秒，避免微信限频
+      if (i < types.length - 1) await new Promise((r) => setTimeout(r, 1500));
+    }
+
+    setPushResult({
+      target: 'all',
+      message: failed.length === 0
+        ? '3次提醒全部推送成功！去微信看看效果'
+        : `部分失败: ${failed.join('; ')}`,
+    });
+    setPushing(null);
+    setTimeout(() => setPushResult(null), 15000);
   };
 
   // Test WeChat push by reminder type
@@ -293,6 +327,20 @@ export default function Settings() {
           >
             {pushing === 'final' ? '发送中...' : '🚨 第3次提醒（最后催促）→ 妻子+丈夫'}
           </button>
+
+          <div className="border-t border-gray-100 pt-3">
+            <button
+              onClick={testAllPush}
+              disabled={pushing !== null}
+              className={`w-full py-2.5 rounded-xl text-sm font-medium transition-all ${
+                pushing === 'all'
+                  ? 'bg-green-100 text-green-400'
+                  : 'bg-green-50 text-green-600 hover:bg-green-100 active:scale-[0.98]'
+              }`}
+            >
+              {pushing === 'all' ? '依次发送中...' : '🔄 一键测试全部 3 次提醒'}
+            </button>
+          </div>
 
           {pushResult && (
             <div className={`text-xs p-3 rounded-xl ${
