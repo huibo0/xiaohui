@@ -12,8 +12,12 @@ interface SymptomEntry {
   notes: string;
 }
 
+function formatDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function getToday(): string {
-  return new Date().toISOString().split('T')[0];
+  return formatDate(new Date());
 }
 
 async function fetchEntry(date: string): Promise<SymptomEntry | null> {
@@ -163,9 +167,9 @@ export default function SymptomDiary() {
   };
 
   const goDate = (offset: number) => {
-    const d = new Date(selectedDate + 'T00:00:00');
+    const d = new Date(selectedDate + 'T12:00:00'); // Use noon to avoid timezone edge cases
     d.setDate(d.getDate() + offset);
-    const newDate = d.toISOString().split('T')[0];
+    const newDate = formatDate(d);
     if (newDate <= getToday()) setSelectedDate(newDate);
   };
 

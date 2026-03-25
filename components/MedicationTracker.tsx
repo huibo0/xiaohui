@@ -23,7 +23,8 @@ const DEFAULT_MED_SETTINGS: MedSettings = {
 };
 
 function getToday(): string {
-  return new Date().toISOString().split('T')[0];
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 async function fetchLog(date: string): Promise<MedLog> {
@@ -57,7 +58,7 @@ async function fetchWeekLogs(): Promise<{ date: string; morning: boolean; evenin
   for (let i = 6; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    logs.push({ date: d.toISOString().split('T')[0], morning: false, evening: false });
+    logs.push({ date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`, morning: false, evening: false });
   }
   return logs;
 }

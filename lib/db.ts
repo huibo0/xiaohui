@@ -1,6 +1,11 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 
+/** Format a Date as YYYY-MM-DD in local timezone (avoids toISOString UTC shift) */
+function localDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 const DB_PATH = process.env.DB_PATH || path.join(process.cwd(), 'data', 'xiaohui.db');
 
 let db: Database.Database | null = null;
@@ -156,7 +161,7 @@ export function getWeekMedLogs(): { date: string; morning: boolean; evening: boo
   for (let i = 6; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = localDateStr(d);
     const medLog = getMedLog(dateStr);
     logs.push({ date: dateStr, morning: medLog.morning.taken, evening: medLog.evening.taken });
   }
@@ -204,7 +209,7 @@ export function getSymptomHistory(days: number = 30): SymptomLog[] {
   const db = getDb();
   const since = new Date();
   since.setDate(since.getDate() - days);
-  const sinceStr = since.toISOString().split('T')[0];
+  const sinceStr = localDateStr(since);
 
   return db.prepare(
     'SELECT date, wrist_stiffness, left_pain, right_pain, mood, notes FROM symptom_logs WHERE date >= ? ORDER BY date ASC'

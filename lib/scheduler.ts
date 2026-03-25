@@ -18,7 +18,7 @@ export function startScheduler() {
   cron.schedule('* * * * *', async () => {
     const now = new Date();
     const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    const today = now.toISOString().split('T')[0];
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
     // Read settings from DB (falls back to env if DB not ready)
     let morningTime: string, eveningTime: string, checkDelay: number;

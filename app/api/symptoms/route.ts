@@ -10,7 +10,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(getSymptomHistory(parseInt(days, 10)));
   }
 
-  const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const date = searchParams.get('date') || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const log = getSymptomLog(date);
   return NextResponse.json(log || { date, wrist_stiffness: 0, left_pain: 0, right_pain: 0, mood: 3, notes: '' });
 }
