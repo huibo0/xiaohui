@@ -93,16 +93,31 @@ export async function sendMedReminder(period: 'morning' | 'evening'): Promise<{ 
     return { success: false, error: '微信配置缺失: WECHAT_OPENID 或 WECHAT_TEMPLATE_ID' };
   }
 
-  const periodName = period === 'morning' ? '早上' : '晚上';
-  const emoji = period === 'morning' ? '🌅' : '🌙';
   const now = new Date();
   const timeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
+  const greetings = {
+    morning: [
+      '早安呀~新的一天开始啦',
+      '早上好，今天也要元气满满哦',
+      '太阳出来啦，该吃药咯',
+      '早安，先吃药再开始美好的一天',
+    ],
+    evening: [
+      '辛苦了一天，别忘了吃药哦',
+      '晚上好~吃完药好好休息',
+      '今天也辛苦啦，记得吃药呀',
+      '晚安前别忘了小药丸哦',
+    ],
+  };
+  const msgs = greetings[period];
+  const greeting = msgs[Math.floor(Math.random() * msgs.length)];
+
   return sendTemplateMessage(openId, templateId, {
-    first: { value: `${emoji} ${periodName}吃药提醒`, color: '#ec4899' },
-    keyword1: { value: '羟氯喹 1片', color: '#333333' },
+    first: { value: greeting, color: '#ec4899' },
+    keyword1: { value: '羟氯喹 2片', color: '#333333' },
     keyword2: { value: timeStr, color: '#333333' },
-    remark: { value: '记得随饭服用哦，搭配牛奶更好~  点击打开小惠记录吃药 💊', color: '#888888' },
+    remark: { value: '随饭吃，搭配牛奶更好~ 点这里打开小惠记录吃药 💊', color: '#999999' },
   }, process.env.SITE_URL || 'https://xiaohui.sdfeer.site');
 }
 
@@ -120,9 +135,9 @@ export async function notifyHusband(period: 'morning' | 'evening'): Promise<{ su
   const timeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
   return sendTemplateMessage(openId, templateId, {
-    first: { value: `⚠️ 小惠${periodName}的药还没吃`, color: '#ef4444' },
-    keyword1: { value: '羟氯喹 1片', color: '#333333' },
+    first: { value: `小莲${periodName}的药还没有吃哦`, color: '#f59e0b' },
+    keyword1: { value: '羟氯喹 2片', color: '#333333' },
     keyword2: { value: timeStr, color: '#333333' },
-    remark: { value: '提醒已发送但她尚未确认，请关心一下~', color: '#888888' },
-  }, `${process.env.SITE_URL || 'https://xiaohui.sdfeer.site'}/api/status`);
+    remark: { value: '提醒已经发了但她还没确认，去关心一下她吧~ 💕', color: '#999999' },
+  }, `${process.env.SITE_URL || 'https://xiaohui.sdfeer.site'}`);
 }

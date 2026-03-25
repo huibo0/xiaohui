@@ -3,48 +3,34 @@
 import { useState, useEffect } from 'react';
 
 interface MedLog {
-  date: string; // YYYY-MM-DD
+  date: string;
   morning: { taken: boolean; time?: string };
   evening: { taken: boolean; time?: string };
 }
 
-interface MedConfig {
-  name: string;
-  nickname: string;
-  color: string;
-  colorHex: string;
-  dosage: string;
-  frequency: string;
-  times: string[];
-  withFood: string;
-  notes: string;
+interface MedSettings {
+  pillNickname: string;
+  pillColor: string;
+  morningTime: string;
+  eveningTime: string;
 }
 
-const DEFAULT_MEDS: MedConfig[] = [
-  {
-    name: '羟氯喹',
-    nickname: '小药丸',
-    color: '待确认',
-    colorHex: '#f472b6',
-    dosage: '每次1片',
-    frequency: '每天2次',
-    times: ['08:00', '20:00'],
-    withFood: '随餐或饭后服用，搭配牛奶更好',
-    notes: '需定期做眼科检查',
-  },
-];
+const DEFAULT_MED_SETTINGS: MedSettings = {
+  pillNickname: '小药丸',
+  pillColor: '#f472b6',
+  morningTime: '08:00',
+  eveningTime: '20:00',
+};
 
 function getToday(): string {
   return new Date().toISOString().split('T')[0];
 }
 
-// API helpers with localStorage fallback
 async function fetchLog(date: string): Promise<MedLog> {
   try {
     const res = await fetch(`/api/meds?date=${date}`);
     if (res.ok) return await res.json();
   } catch {}
-  // fallback to localStorage
   if (typeof window === 'undefined') return { date, morning: { taken: false }, evening: { taken: false } };
   const saved = localStorage.getItem(`xiaohui_med_${date}`);
   return saved ? JSON.parse(saved) : { date, morning: { taken: false }, evening: { taken: false } };
@@ -59,7 +45,6 @@ async function postMedAction(date: string, period: 'morning' | 'evening', action
     });
     if (res.ok) return await res.json();
   } catch {}
-  // fallback: return current state (caller handles localStorage)
   return { date, morning: { taken: false }, evening: { taken: false } };
 }
 
@@ -68,15 +53,31 @@ async function fetchWeekLogs(): Promise<{ date: string; morning: boolean; evenin
     const res = await fetch('/api/meds?week=1');
     if (res.ok) return await res.json();
   } catch {}
-  // fallback
   const logs = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
-    logs.push({ date: dateStr, morning: false, evening: false });
+    logs.push({ date: d.toISOString().split('T')[0], morning: false, evening: false });
   }
   return logs;
+}
+
+async function fetchSettings(): Promise<MedSettings> {
+  try {
+    const res = await fetch('/api/settings');
+    if (res.ok) {
+      const data = await res.json();
+      return { ...DEFAULT_MED_SETTINGS, ...data };
+    }
+  } catch {}
+  // fallback localStorage
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('xiaohui_settings');
+    if (saved) {
+      try { return { ...DEFAULT_MED_SETTINGS, ...JSON.parse(saved) }; } catch {}
+    }
+  }
+  return DEFAULT_MED_SETTINGS;
 }
 
 export default function MedicationTracker() {
@@ -84,10 +85,12 @@ export default function MedicationTracker() {
   const [weekLogs, setWeekLogs] = useState<{ date: string; morning: boolean; evening: boolean }[]>([]);
   const [showConfetti, setShowConfetti] = useState(false);
   const [currentTime, setCurrentTime] = useState('');
+  const [medSettings, setMedSettings] = useState<MedSettings>(DEFAULT_MED_SETTINGS);
 
   useEffect(() => {
     fetchLog(getToday()).then(setLog);
     fetchWeekLogs().then(setWeekLogs);
+    fetchSettings().then(setMedSettings);
     setCurrentTime(new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }));
     const timer = setInterval(() => {
       setCurrentTime(new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }));
@@ -97,11 +100,9 @@ export default function MedicationTracker() {
 
   const markTaken = async (period: 'morning' | 'evening') => {
     const now = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-    // Optimistic update
     setLog((prev) => ({ ...prev, date: getToday(), [period]: { taken: true, time: now } }));
     setShowConfetti(true);
     setTimeout(() => setShowConfetti(false), 1500);
-    // Sync to server
     const updated = await postMedAction(getToday(), period, 'take', now);
     if (updated.date) setLog(updated);
     fetchWeekLogs().then(setWeekLogs);
@@ -117,12 +118,10 @@ export default function MedicationTracker() {
   const hour = new Date().getHours();
   const isMorningTime = hour >= 6 && hour < 14;
   const currentPeriod = isMorningTime ? 'morning' : 'evening';
-
   const DAY_NAMES = ['日', '一', '二', '三', '四', '五', '六'];
-
-  const med = DEFAULT_MEDS[0];
-
   const allDone = log.morning.taken && log.evening.taken;
+
+  const { pillNickname, pillColor, morningTime, eveningTime } = medSettings;
 
   return (
     <div className="space-y-4">
@@ -148,15 +147,15 @@ export default function MedicationTracker() {
         {/* Medicine Info */}
         <div className="bg-pink-50/50 rounded-xl p-3 mb-4">
           <div className="flex items-center gap-3">
-            <div className="pill-icon" style={{ backgroundColor: med.colorHex + '30', color: med.colorHex }}>
+            <div className="pill-icon" style={{ backgroundColor: pillColor + '30', color: pillColor }}>
               💊
             </div>
             <div>
-              <p className="font-medium text-gray-700">{med.nickname}</p>
-              <p className="text-xs text-gray-400">{med.name} · {med.dosage}</p>
+              <p className="font-medium text-gray-700">{pillNickname}</p>
+              <p className="text-xs text-gray-400">羟氯喹 · 每次2片</p>
             </div>
           </div>
-          <p className="text-xs text-gray-500 mt-2 pl-12">📋 {med.withFood}</p>
+          <p className="text-xs text-gray-500 mt-2 pl-12">📋 随餐或饭后服用，搭配牛奶更好</p>
         </div>
 
         {/* Morning & Evening Cards */}
@@ -171,7 +170,7 @@ export default function MedicationTracker() {
           }`}>
             <div className="text-2xl mb-1">🌅</div>
             <p className="text-sm font-medium text-gray-700">早上</p>
-            <p className="text-xs text-gray-400 mb-2">{med.times[0]}</p>
+            <p className="text-xs text-gray-400 mb-2">{morningTime}</p>
             {log.morning.taken ? (
               <div>
                 <span className="text-green-500 text-sm font-medium check-animate">✓ 已吃</span>
@@ -198,7 +197,7 @@ export default function MedicationTracker() {
           }`}>
             <div className="text-2xl mb-1">🌙</div>
             <p className="text-sm font-medium text-gray-700">晚上</p>
-            <p className="text-xs text-gray-400 mb-2">{med.times[1]}</p>
+            <p className="text-xs text-gray-400 mb-2">{eveningTime}</p>
             {log.evening.taken ? (
               <div>
                 <span className="text-green-500 text-sm font-medium check-animate">✓ 已吃</span>
@@ -241,7 +240,7 @@ export default function MedicationTracker() {
                         ? 'bg-pink-50 text-pink-300 border-2 border-pink-200'
                         : 'bg-gray-50 text-gray-300'
                 }`}>
-                  {bothDone ? '✓' : partial ? '½' : isToday ? '·' : '·'}
+                  {bothDone ? '✓' : partial ? '½' : '·'}
                 </div>
               </div>
             );
@@ -257,7 +256,7 @@ export default function MedicationTracker() {
       {/* Gentle Reminder */}
       <div className="bg-gradient-to-r from-pink-50 to-purple-50 rounded-2xl p-4 border border-pink-100">
         <p className="text-sm text-gray-600 leading-relaxed">
-          💡 <strong>小提醒：</strong>羟氯喹跟着饭一起吃，胃会更舒服。如果有任何不舒服的感觉（特别是眼睛方面），记得跟医生说哦。
+          💡 <strong>小提醒：</strong>羟氯喹每次 2 片，跟着饭一起吃，胃会更舒服。搭配牛奶效果更好哦。如果有任何不舒服的感觉（特别是眼睛方面），记得跟医生说。
         </p>
       </div>
     </div>
