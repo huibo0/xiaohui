@@ -87,7 +87,8 @@ export async function sendTemplateMessage(
 
 function nowTimeStr(): string {
   const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  // 强制上海时区，不依赖系统时区
+  return now.toLocaleString('sv-SE', { timeZone: process.env.TZ || 'Asia/Shanghai' }).replace('T', ' ').slice(0, 16);
 }
 
 function siteUrl(): string {

@@ -27,10 +27,17 @@ export function startScheduler() {
 
   console.log(`[Scheduler] 启动定时任务调度器（每分钟检查一次）`);
 
+  const TZ = process.env.TZ || 'Asia/Shanghai';
+
   cron.schedule('* * * * *', async () => {
+    // 强制使用上海时区，不依赖系统时区
     const now = new Date();
-    const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const shanghaiStr = now.toLocaleString('sv-SE', { timeZone: TZ }); // "2026-03-25 20:00"
+    const [datePart, timePart] = shanghaiStr.split(' ');
+    const today = datePart; // YYYY-MM-DD
+    const currentTime = timePart.slice(0, 5); // HH:MM
+
+    console.log(`[Scheduler] 检查时间: ${today} ${currentTime} (${TZ})`);
 
     // Read settings from DB (falls back to env if DB not ready)
     let morningTime: string, eveningTime: string, checkDelay: number;

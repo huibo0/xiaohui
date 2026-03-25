@@ -87,6 +87,7 @@ export default function MedicationTracker() {
   const [showConfetti, setShowConfetti] = useState(false);
   const [currentTime, setCurrentTime] = useState('');
   const [medSettings, setMedSettings] = useState<MedSettings>(DEFAULT_MED_SETTINGS);
+  const [confirmPeriod, setConfirmPeriod] = useState<'morning' | 'evening' | null>(null);
 
   useEffect(() => {
     fetchLog(getToday()).then(setLog);
@@ -99,7 +100,17 @@ export default function MedicationTracker() {
     return () => clearInterval(timer);
   }, []);
 
-  const markTaken = async (period: 'morning' | 'evening') => {
+  // 点"吃药啦"按钮 → 先弹确认喂奶弹窗
+  const handleTakeClick = (period: 'morning' | 'evening') => {
+    setConfirmPeriod(period);
+  };
+
+  // 确认已喂奶，提交吃药记录
+  const confirmTaken = async () => {
+    if (!confirmPeriod) return;
+    const period = confirmPeriod;
+    setConfirmPeriod(null);
+
     const now = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
     setLog((prev) => ({ ...prev, date: getToday(), [period]: { taken: true, time: now } }));
     setShowConfetti(true);
@@ -180,7 +191,7 @@ export default function MedicationTracker() {
               </div>
             ) : (
               <button
-                onClick={() => markTaken('morning')}
+                onClick={() => handleTakeClick('morning')}
                 className="mt-1 bg-pink-400 hover:bg-pink-500 text-white text-sm font-medium px-4 py-1.5 rounded-full transition-colors active:scale-95"
               >
                 吃药啦
@@ -207,7 +218,7 @@ export default function MedicationTracker() {
               </div>
             ) : (
               <button
-                onClick={() => markTaken('evening')}
+                onClick={() => handleTakeClick('evening')}
                 className="mt-1 bg-purple-400 hover:bg-purple-500 text-white text-sm font-medium px-4 py-1.5 rounded-full transition-colors active:scale-95"
               >
                 吃药啦
@@ -260,6 +271,35 @@ export default function MedicationTracker() {
           💡 <strong>小提醒：</strong>羟氯喹每次 2 片，跟着饭一起吃，胃会更舒服。搭配牛奶效果更好哦。如果有任何不舒服的感觉（特别是眼睛方面），记得跟医生说。
         </p>
       </div>
+
+      {/* 喂奶确认弹窗 */}
+      {confirmPeriod && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-6">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+            <div className="text-center mb-4">
+              <div className="text-4xl mb-3">🍼</div>
+              <h3 className="font-semibold text-gray-800 text-lg mb-2">先喂奶了吗？</h3>
+              <p className="text-sm text-gray-500 leading-relaxed">
+                确保宝宝已经喂过奶了再吃{pillNickname}哦，这样对宝宝更安全~
+              </p>
+            </div>
+            <div className="space-y-2">
+              <button
+                onClick={confirmTaken}
+                className="w-full py-3 bg-pink-400 hover:bg-pink-500 text-white font-medium rounded-xl transition-colors active:scale-[0.98]"
+              >
+                已喂奶，确认吃{pillNickname}
+              </button>
+              <button
+                onClick={() => setConfirmPeriod(null)}
+                className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium rounded-xl transition-colors active:scale-[0.98]"
+              >
+                还没喂，等一下
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
