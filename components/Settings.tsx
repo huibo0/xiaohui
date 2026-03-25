@@ -36,6 +36,8 @@ export default function Settings() {
   const [notifyStatus, setNotifyStatus] = useState<'default' | 'granted' | 'denied'>('default');
   const [pushResult, setPushResult] = useState<{ target: string; message: string } | null>(null);
   const [pushing, setPushing] = useState<string | null>(null);
+  const [pushLogs, setPushLogs] = useState<any[]>([]);
+  const [showLogs, setShowLogs] = useState(false);
 
   // Load settings from API (fallback to localStorage)
   useEffect(() => {
@@ -113,13 +115,27 @@ export default function Settings() {
       if (data.success) {
         setPushResult({ target, message: '推送成功！去微信看看有没有收到' });
       } else {
-        setPushResult({ target, message: data.error || data.message || '推送失败，请检查配置' });
+        // Show detailed error from WeChat API
+        const detail = data.message || data.error || '推送失败';
+        setPushResult({ target, message: detail });
       }
     } catch (err: any) {
       setPushResult({ target, message: `网络错误: ${err.message}` });
     } finally {
       setPushing(null);
-      setTimeout(() => setPushResult(null), 5000);
+      // Keep error visible longer so user can read
+      setTimeout(() => setPushResult(null), 15000);
+    }
+  };
+
+  // Load push logs
+  const loadPushLogs = async () => {
+    setShowLogs(!showLogs);
+    if (!showLogs) {
+      try {
+        const res = await fetch('/api/push-logs?limit=20');
+        if (res.ok) setPushLogs(await res.json());
+      } catch {}
     }
   };
 
@@ -285,6 +301,33 @@ export default function Settings() {
               pushResult.message.includes('成功') ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'
             }`}>
               {pushResult.message}
+            </div>
+          )}
+
+          {/* Push Log Viewer */}
+          <button onClick={loadPushLogs} className="text-xs text-gray-400 underline mt-1">
+            {showLogs ? '收起推送日志' : '查看推送日志'}
+          </button>
+
+          {showLogs && (
+            <div className="mt-2 max-h-60 overflow-y-auto space-y-1.5">
+              {pushLogs.length === 0 ? (
+                <p className="text-xs text-gray-300 text-center py-3">暂无推送记录</p>
+              ) : pushLogs.map((log: any) => (
+                <div key={log.id} className={`text-xs p-2.5 rounded-lg ${log.success ? 'bg-green-50' : 'bg-red-50'}`}>
+                  <div className="flex items-center justify-between">
+                    <span className={log.success ? 'text-green-600' : 'text-red-500'}>
+                      {log.success ? '✓' : '✗'} {log.type}
+                    </span>
+                    <span className="text-gray-300">{log.created_at}</span>
+                  </div>
+                  {log.error && (
+                    <div className="text-red-400 mt-1 break-all font-mono text-[10px] leading-relaxed">
+                      {log.error}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </div>

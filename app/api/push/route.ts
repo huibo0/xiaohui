@@ -22,11 +22,16 @@ export async function POST(req: NextRequest) {
     }
 
     const allSuccess = results.every((r) => r.success);
-    return NextResponse.json({
-      success: allSuccess,
-      results,
-      message: allSuccess ? '推送成功！去微信看看有没有收到' : '部分推送失败，请检查配置',
-    });
+    // Build detailed message with WeChat error info
+    const failedResults = results.filter((r) => !r.success);
+    let message = '';
+    if (allSuccess) {
+      message = '推送成功！去微信看看有没有收到';
+    } else {
+      const errorDetails = failedResults.map((r) => `${r.target}: ${r.error || '未知错误'}`).join('; ');
+      message = `推送失败 — ${errorDetails}`;
+    }
+    return NextResponse.json({ success: allSuccess, results, message });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
