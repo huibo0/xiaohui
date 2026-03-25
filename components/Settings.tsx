@@ -101,29 +101,27 @@ export default function Settings() {
     }
   };
 
-  // Test WeChat push
-  const testPush = async (target: 'wife' | 'husband' | 'both') => {
-    setPushing(target);
+  // Test WeChat push by reminder type
+  const testPush = async (type: 'first' | 'followup' | 'final') => {
+    setPushing(type);
     setPushResult(null);
     try {
       const res = await fetch('/api/push', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target, period: 'morning' }),
+        body: JSON.stringify({ type, period: 'morning' }),
       });
       const data = await res.json();
       if (data.success) {
-        setPushResult({ target, message: '推送成功！去微信看看有没有收到' });
+        setPushResult({ target: type, message: '推送成功！去微信看看有没有收到' });
       } else {
-        // Show detailed error from WeChat API
         const detail = data.message || data.error || '推送失败';
-        setPushResult({ target, message: detail });
+        setPushResult({ target: type, message: detail });
       }
     } catch (err: any) {
-      setPushResult({ target, message: `网络错误: ${err.message}` });
+      setPushResult({ target: type, message: `网络错误: ${err.message}` });
     } finally {
       setPushing(null);
-      // Keep error visible longer so user can read
       setTimeout(() => setPushResult(null), 15000);
     }
   };
@@ -261,39 +259,39 @@ export default function Settings() {
 
         <div className="space-y-3">
           <button
-            onClick={() => testPush('wife')}
+            onClick={() => testPush('first')}
             disabled={pushing !== null}
             className={`w-full py-2.5 rounded-xl text-sm font-medium transition-all ${
-              pushing === 'wife'
+              pushing === 'first'
                 ? 'bg-pink-100 text-pink-400'
                 : 'bg-pink-50 text-pink-600 hover:bg-pink-100 active:scale-[0.98]'
             }`}
           >
-            {pushing === 'wife' ? '发送中...' : '💊 推送给妻子（吃药提醒）'}
+            {pushing === 'first' ? '发送中...' : '🍼 第1次提醒（先喂奶再吃药）→ 妻子'}
           </button>
 
           <button
-            onClick={() => testPush('husband')}
+            onClick={() => testPush('followup')}
             disabled={pushing !== null}
             className={`w-full py-2.5 rounded-xl text-sm font-medium transition-all ${
-              pushing === 'husband'
-                ? 'bg-blue-100 text-blue-400'
-                : 'bg-blue-50 text-blue-600 hover:bg-blue-100 active:scale-[0.98]'
+              pushing === 'followup'
+                ? 'bg-amber-100 text-amber-400'
+                : 'bg-amber-50 text-amber-600 hover:bg-amber-100 active:scale-[0.98]'
             }`}
           >
-            {pushing === 'husband' ? '发送中...' : '📱 推送给丈夫（未吃药通知）'}
+            {pushing === 'followup' ? '发送中...' : '⏰ 第2次提醒（催促吃药）→ 妻子+丈夫'}
           </button>
 
           <button
-            onClick={() => testPush('both')}
+            onClick={() => testPush('final')}
             disabled={pushing !== null}
             className={`w-full py-2.5 rounded-xl text-sm font-medium transition-all ${
-              pushing === 'both'
-                ? 'bg-purple-100 text-purple-400'
-                : 'bg-purple-50 text-purple-600 hover:bg-purple-100 active:scale-[0.98]'
+              pushing === 'final'
+                ? 'bg-red-100 text-red-400'
+                : 'bg-red-50 text-red-600 hover:bg-red-100 active:scale-[0.98]'
             }`}
           >
-            {pushing === 'both' ? '发送中...' : '👫 同时推送给两人'}
+            {pushing === 'final' ? '发送中...' : '🚨 第3次提醒（最后催促）→ 妻子+丈夫'}
           </button>
 
           {pushResult && (
