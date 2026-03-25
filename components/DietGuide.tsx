@@ -1,148 +1,189 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { FOOD_DATABASE, FOOD_CATEGORIES, SAFETY_INFO, searchFood, type FoodItem } from '@/lib/food-data';
 
-interface FoodItem {
-  name: string;
-  emoji: string;
-  detail?: string;
+function FoodCard({ food }: { food: FoodItem }) {
+  const [expanded, setExpanded] = useState(false);
+  const info = SAFETY_INFO[food.safety];
+
+  return (
+    <div
+      className="rounded-xl p-3 flex items-start gap-3 cursor-pointer active:scale-[0.98] transition-all"
+      style={{ backgroundColor: info.bg, borderLeft: `3px solid ${info.color}` }}
+      onClick={() => setExpanded(!expanded)}
+    >
+      <span className="text-xl mt-0.5 flex-shrink-0">{food.emoji}</span>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-gray-700 text-sm">{food.name}</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0"
+            style={{ backgroundColor: info.color + '20', color: info.color }}>
+            {info.emoji} {info.label}
+          </span>
+        </div>
+        <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{food.reason}</p>
+        {expanded && food.tip && (
+          <p className="text-xs text-gray-400 mt-1.5 p-2 bg-white/60 rounded-lg leading-relaxed">
+            💡 {food.tip}
+          </p>
+        )}
+      </div>
+    </div>
+  );
 }
-
-interface FoodCategory {
-  title: string;
-  icon: string;
-  color: string;
-  bgColor: string;
-  borderColor: string;
-  description: string;
-  items: FoodItem[];
-}
-
-const FOOD_DATA: FoodCategory[] = [
-  {
-    title: '推荐多吃',
-    icon: '💚',
-    color: 'text-green-600',
-    bgColor: 'bg-green-50',
-    borderColor: 'border-green-100',
-    description: '抗炎、保护骨骼和心脏',
-    items: [
-      { name: '深海鱼', emoji: '🐟', detail: '三文鱼、鲭鱼、沙丁鱼，富含 Omega-3 抗炎' },
-      { name: '绿叶蔬菜', emoji: '🥬', detail: '菠菜、羽衣甘蓝，补钙又抗炎' },
-      { name: '全谷物', emoji: '🌾', detail: '糙米、燕麦、全麦面包' },
-      { name: '新鲜水果', emoji: '🍎', detail: '蓝莓、樱桃、柑橘类，抗氧化好帮手' },
-      { name: '坚果', emoji: '🥜', detail: '核桃、杏仁，好脂肪来源' },
-      { name: '橄榄油', emoji: '🫒', detail: '用来做饭或拌沙拉，替代其他油' },
-      { name: '豆类', emoji: '🫘', detail: '鹰嘴豆、黑豆、豆腐' },
-      { name: '牛奶/酸奶', emoji: '🥛', detail: '低脂乳制品，补钙护骨骼' },
-      { name: '鸡蛋', emoji: '🥚', detail: '优质蛋白质来源' },
-      { name: '西兰花', emoji: '🥦', detail: '十字花科蔬菜，抗炎明星' },
-    ],
-  },
-  {
-    title: '尽量少吃',
-    icon: '🟡',
-    color: 'text-yellow-600',
-    bgColor: 'bg-yellow-50',
-    borderColor: 'border-yellow-100',
-    description: '可能加重炎症或影响药效',
-    items: [
-      { name: '高糖食物', emoji: '🍰', detail: '糖果、蛋糕、含糖饮料，会促进炎症' },
-      { name: '加工食品', emoji: '🥫', detail: '罐头、方便面、加工肉类' },
-      { name: '高盐食物', emoji: '🧂', detail: '腌制食品、外卖，高盐加重水肿' },
-      { name: '油炸食品', emoji: '🍟', detail: '炸鸡、薯条等，含大量反式脂肪' },
-      { name: '饱和脂肪', emoji: '🥓', detail: '肥肉、香肠、高脂奶酪' },
-      { name: '酒精', emoji: '🍷', detail: '如果要喝，每天不超过一杯' },
-    ],
-  },
-  {
-    title: '绝对避免',
-    icon: '🔴',
-    color: 'text-red-600',
-    bgColor: 'bg-red-50',
-    borderColor: 'border-red-100',
-    description: '可能直接触发症状',
-    items: [
-      { name: '苜蓿 / 苜蓿芽', emoji: '🌱', detail: '含左旋刀豆氨酸，可能直接触发狼疮症状！这是最重要的禁忌' },
-      { name: '苜蓿补充剂', emoji: '💊', detail: '任何含苜蓿成分的保健品都要避免' },
-    ],
-  },
-];
-
-const MAYBE_ITEMS = [
-  { name: '茄科蔬菜', emoji: '🍅', detail: '番茄、茄子、青椒、土豆 —— 有些人会加重症状，可以观察自己的反应' },
-  { name: '麸质', emoji: '🍞', detail: '面筋蛋白 —— 并非所有人都敏感，如果觉得吃面食后不舒服可以试试少吃' },
-];
 
 export default function DietGuide() {
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [activeSafety, setActiveSafety] = useState<string | null>(null);
+
+  // Search results
+  const searchResults = useMemo(() => {
+    if (query.trim()) return searchFood(query);
+    return null;
+  }, [query]);
+
+  // Filtered by category and safety
+  const filteredFoods = useMemo(() => {
+    let foods = FOOD_DATABASE;
+    if (activeCategory) foods = foods.filter((f) => f.category === activeCategory);
+    if (activeSafety) foods = foods.filter((f) => f.safety === activeSafety);
+    return foods;
+  }, [activeCategory, activeSafety]);
+
+  // Stats
+  const stats = useMemo(() => ({
+    good: FOOD_DATABASE.filter((f) => f.safety === 'good').length,
+    ok: FOOD_DATABASE.filter((f) => f.safety === 'ok').length,
+    caution: FOOD_DATABASE.filter((f) => f.safety === 'caution').length,
+    avoid: FOOD_DATABASE.filter((f) => f.safety === 'avoid').length,
+  }), []);
+
+  const isSearching = query.trim().length > 0;
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="bg-white rounded-2xl p-5 shadow-sm border border-pink-50">
-        <h2 className="font-semibold text-gray-800 mb-2">饮食小指南 🍽️</h2>
-        <p className="text-sm text-gray-500 leading-relaxed">
-          地中海饮食是目前研究推荐的方向：多吃鱼、蔬果、全谷物、橄榄油，少吃加工食品和糖。不需要完全严格，慢慢调整就好。
-        </p>
+      {/* Search Bar */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm border border-pink-50">
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300">🔍</span>
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="搜食物...（如：三文鱼、牛奶、苜蓿）"
+            className="w-full pl-10 pr-8 py-3 bg-gray-50 rounded-xl border border-gray-100 text-sm focus:outline-none focus:border-pink-200 focus:ring-1 focus:ring-pink-100"
+          />
+          {query && (
+            <button onClick={() => setQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500">
+              ✕
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Food Categories */}
-      {FOOD_DATA.map((category) => (
-        <div key={category.title} className={`bg-white rounded-2xl shadow-sm border ${category.borderColor} overflow-hidden`}>
-          <button
-            onClick={() => setExpanded(expanded === category.title ? null : category.title)}
-            className="w-full p-4 flex items-center justify-between"
-          >
-            <div className="flex items-center gap-2">
-              <span className="text-lg">{category.icon}</span>
-              <div className="text-left">
-                <h3 className={`font-medium ${category.color}`}>{category.title}</h3>
-                <p className="text-xs text-gray-400">{category.description}</p>
-              </div>
-            </div>
-            <span className={`text-gray-300 transition-transform ${expanded === category.title ? 'rotate-180' : ''}`}>
-              ▾
-            </span>
-          </button>
-
-          {expanded === category.title && (
-            <div className={`px-4 pb-4 space-y-2 animate-fade-in`}>
-              {category.items.map((item, i) => (
-                <div key={i} className={`${category.bgColor} rounded-xl p-3 flex items-start gap-3`}>
-                  <span className="text-xl mt-0.5">{item.emoji}</span>
-                  <div>
-                    <p className="font-medium text-gray-700 text-sm">{item.name}</p>
-                    {item.detail && <p className="text-xs text-gray-500 mt-0.5">{item.detail}</p>}
-                  </div>
-                </div>
+      {/* Search Results */}
+      {isSearching && (
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-pink-50">
+          <div className="text-xs text-gray-400 mb-3">
+            找到 {searchResults?.length || 0} 个结果
+          </div>
+          {searchResults && searchResults.length > 0 ? (
+            <div className="space-y-2">
+              {searchResults.map((food, i) => (
+                <FoodCard key={`${food.name}-${i}`} food={food} />
               ))}
+            </div>
+          ) : (
+            <div className="text-center py-6">
+              <span className="text-2xl">🤔</span>
+              <p className="text-sm text-gray-400 mt-2">没找到「{query}」</p>
+              <p className="text-xs text-gray-300 mt-1">试试其他关键词，或按分类浏览</p>
             </div>
           )}
         </div>
-      ))}
+      )}
 
-      {/* Maybe Section */}
-      <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-        <h3 className="font-medium text-gray-700 mb-3 flex items-center gap-2">
-          <span>🤔</span> 因人而异
-        </h3>
-        <p className="text-xs text-gray-400 mb-3">这些食物不是所有人都敏感，可以观察自己吃了之后的反应</p>
-        {MAYBE_ITEMS.map((item, i) => (
-          <div key={i} className="bg-gray-50 rounded-xl p-3 flex items-start gap-3 mb-2 last:mb-0">
-            <span className="text-xl mt-0.5">{item.emoji}</span>
-            <div>
-              <p className="font-medium text-gray-700 text-sm">{item.name}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{item.detail}</p>
+      {/* Non-search mode: browse */}
+      {!isSearching && (
+        <>
+          {/* Safety Quick Filter */}
+          <div className="flex gap-2 overflow-x-auto no-scrollbar px-1">
+            {(Object.entries(SAFETY_INFO) as [string, typeof SAFETY_INFO['good']][]).map(([key, info]) => (
+              <button key={key}
+                onClick={() => setActiveSafety(activeSafety === key ? null : key)}
+                className={`flex items-center gap-1.5 text-xs px-3 py-2 rounded-full whitespace-nowrap transition-all flex-shrink-0 ${
+                  activeSafety === key
+                    ? 'font-medium shadow-sm'
+                    : 'bg-white border border-gray-100'
+                }`}
+                style={activeSafety === key ? { backgroundColor: info.bg, color: info.color, borderColor: info.border } : {}}
+              >
+                <span>{info.emoji}</span>
+                <span>{info.label}</span>
+                <span className="text-gray-300 text-[10px]">
+                  {stats[key as keyof typeof stats]}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Category Filter */}
+          <div className="flex gap-2 overflow-x-auto no-scrollbar px-1">
+            <button
+              onClick={() => setActiveCategory(null)}
+              className={`text-xs px-3 py-1.5 rounded-full whitespace-nowrap flex-shrink-0 transition-all ${
+                !activeCategory ? 'bg-pink-100 text-pink-600 font-medium' : 'bg-white border border-gray-100 text-gray-400'
+              }`}
+            >全部</button>
+            {FOOD_CATEGORIES.map((cat) => (
+              <button key={cat.key}
+                onClick={() => setActiveCategory(activeCategory === cat.key ? null : cat.key)}
+                className={`text-xs px-3 py-1.5 rounded-full whitespace-nowrap flex-shrink-0 transition-all ${
+                  activeCategory === cat.key ? 'bg-pink-100 text-pink-600 font-medium' : 'bg-white border border-gray-100 text-gray-400'
+                }`}
+              >{cat.emoji} {cat.key}</button>
+            ))}
+          </div>
+
+          {/* Food List */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-pink-50">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-medium text-gray-700">
+                {activeCategory || '全部食物'}
+                {activeSafety && ` · ${SAFETY_INFO[activeSafety as keyof typeof SAFETY_INFO].label}`}
+              </h3>
+              <span className="text-xs text-gray-300">{filteredFoods.length} 种</span>
+            </div>
+            <div className="space-y-2">
+              {filteredFoods.slice(0, 50).map((food, i) => (
+                <FoodCard key={`${food.name}-${i}`} food={food} />
+              ))}
+              {filteredFoods.length > 50 && (
+                <p className="text-xs text-gray-300 text-center py-2">
+                  还有 {filteredFoods.length - 50} 种，试试搜索更精确
+                </p>
+              )}
             </div>
           </div>
-        ))}
+        </>
+      )}
+
+      {/* Key Warning */}
+      <div className="bg-red-50 rounded-2xl p-4 border border-red-100">
+        <h3 className="text-sm font-medium text-red-600 mb-1">🚫 最重要的禁忌</h3>
+        <p className="text-xs text-red-500 leading-relaxed">
+          <strong>苜蓿（alfalfa）</strong>及任何含苜蓿的食品/保健品必须完全避免，它含有的L-刀豆氨酸可以直接触发狼疮症状。
+        </p>
       </div>
 
-      {/* Important Note */}
+      {/* Dietary principle */}
       <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-2xl p-4 border border-green-100">
-        <p className="text-sm text-gray-600 leading-relaxed">
-          💡 每个人的身体不一样，这些是一般性的建议。如果对某种食物有疑问，最好和医生讨论。慢慢调整，不要给自己太大压力哦。
+        <h3 className="text-sm font-medium text-gray-700 mb-1">🥗 饮食原则</h3>
+        <p className="text-xs text-gray-500 leading-relaxed">
+          推荐地中海饮食：多吃鱼、蔬果、全谷物、橄榄油，少吃加工食品和糖。每个人的身体不一样，以上是一般性建议。如果对某种食物有疑问，最好和医生讨论。
         </p>
       </div>
     </div>

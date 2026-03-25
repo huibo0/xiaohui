@@ -16,7 +16,7 @@ cd "$APP_DIR"
 
 # 1. 拉取最新代码
 echo "📥 拉取最新代码..."
-git pull origin main
+git pull origin master
 
 # 2. 安装依赖（有新包时才实际安装）
 echo "📦 检查依赖..."

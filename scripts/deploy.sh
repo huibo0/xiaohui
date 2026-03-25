@@ -56,7 +56,7 @@ if [ -n "$(git status --porcelain)" ]; then
 fi
 
 echo -e "${YELLOW}📤 推送到 GitHub...${NC}"
-git push origin main
+git push origin master
 echo -e "${GREEN}✅ 推送完成${NC}"
 
 # 3. SSH 到 VPS 执行远程部署

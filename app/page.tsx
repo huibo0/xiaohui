@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import MedicationTracker from '@/components/MedicationTracker';
 import SymptomDiary from '@/components/SymptomDiary';
-import DataTrend from '@/components/DataTrend';
 import UVIndex from '@/components/UVIndex';
 import DietGuide from '@/components/DietGuide';
 import LifeTips from '@/components/LifeTips';
@@ -12,7 +11,6 @@ import Settings from '@/components/Settings';
 const TABS = [
   { id: 'meds', label: '吃药', icon: '💊' },
   { id: 'diary', label: '记录', icon: '📝' },
-  { id: 'trend', label: '趋势', icon: '📊' },
   { id: 'uv', label: '防晒', icon: '☀️' },
   { id: 'diet', label: '饮食', icon: '🥗' },
   { id: 'tips', label: '小贴士', icon: '🌸' },
@@ -40,7 +38,6 @@ export default function Home() {
     switch (activeTab) {
       case 'meds': return <MedicationTracker />;
       case 'diary': return <SymptomDiary />;
-      case 'trend': return <DataTrend />;
       case 'uv': return <UVIndex />;
       case 'diet': return <DietGuide />;
       case 'tips': return <LifeTips />;
