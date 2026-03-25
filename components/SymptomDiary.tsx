@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 
 interface SymptomEntry {
   date: string;
-  stiffness: number;
-  pain: number;
-  fatigue: number;
+  wrist_stiffness: number;
+  left_pain: number;
+  right_pain: number;
   mood: number;
   notes: string;
 }
@@ -23,7 +23,6 @@ async function fetchEntry(date: string): Promise<SymptomEntry | null> {
       if (data.date) return data;
     }
   } catch {}
-  // fallback to localStorage
   if (typeof window === 'undefined') return null;
   const saved = localStorage.getItem(`xiaohui_symptom_${date}`);
   return saved ? JSON.parse(saved) : null;
@@ -38,111 +37,144 @@ async function postEntry(entry: SymptomEntry): Promise<boolean> {
     });
     return res.ok;
   } catch {
-    // fallback: save to localStorage
     localStorage.setItem(`xiaohui_symptom_${entry.date}`, JSON.stringify(entry));
     return true;
   }
 }
 
-async function fetchHistory(days: number = 14): Promise<SymptomEntry[]> {
-  try {
-    const res = await fetch(`/api/symptoms?history=${days}`);
-    if (res.ok) return await res.json();
-  } catch {}
-  return [];
-}
-
 const MOOD_EMOJIS = ['😢', '😟', '😐', '🙂', '😊'];
 
-function SliderField({ label, emoji, value, onChange, color }: {
-  label: string; emoji: string; value: number; onChange: (v: number) => void; color: string;
+function getPainLevel(v: number): { label: string; color: string } {
+  if (v === 0) return { label: '无', color: '#10b981' };
+  if (v <= 20) return { label: '轻微', color: '#84cc16' };
+  if (v <= 40) return { label: '中轻', color: '#eab308' };
+  if (v <= 60) return { label: '中等', color: '#f97316' };
+  if (v <= 80) return { label: '较重', color: '#ef4444' };
+  return { label: '严重', color: '#dc2626' };
+}
+
+function PainSlider({ label, emoji, value, onChange, trackColor }: {
+  label: string; emoji: string; value: number; onChange: (v: number) => void; trackColor: string;
 }) {
-  const getLabel = (v: number) => {
-    if (v === 0) return '无';
-    if (v <= 3) return '轻微';
-    if (v <= 6) return '中等';
-    if (v <= 8) return '较重';
-    return '严重';
-  };
+  const level = getPainLevel(value);
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-gray-700">{emoji} {label}</span>
-        <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: color + '20', color }}>
-          {value}/10 · {getLabel(value)}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-lg font-semibold tabular-nums" style={{ color: level.color }}>
+            {value}
+          </span>
+          <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: level.color + '18', color: level.color }}>
+            {level.label}
+          </span>
+        </div>
       </div>
-      <input
-        type="range"
-        min="0"
-        max="10"
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full"
-        style={{ background: `linear-gradient(to right, ${color} ${value * 10}%, #e5e7eb ${value * 10}%)` }}
-      />
+      <div className="relative">
+        <input
+          type="range"
+          min="0"
+          max="100"
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="w-full h-2 rounded-full appearance-none cursor-pointer"
+          style={{
+            background: `linear-gradient(to right, ${trackColor} ${value}%, #e5e7eb ${value}%)`,
+          }}
+        />
+        <div className="flex justify-between mt-1 px-0.5">
+          <span className="text-[10px] text-gray-300">0</span>
+          <span className="text-[10px] text-gray-300">50</span>
+          <span className="text-[10px] text-gray-300">100</span>
+        </div>
+      </div>
     </div>
   );
 }
 
 export default function SymptomDiary() {
   const [entry, setEntry] = useState<SymptomEntry>({
-    date: '', stiffness: 0, pain: 0, fatigue: 0, mood: 3, notes: '',
+    date: '', wrist_stiffness: 0, left_pain: 0, right_pain: 0, mood: 3, notes: '',
   });
-  const [history, setHistory] = useState<SymptomEntry[]>([]);
   const [saved, setSaved] = useState(false);
-  const [showChart, setShowChart] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(getToday());
 
   useEffect(() => {
-    const today = getToday();
-    fetchEntry(today).then((existing) => {
+    fetchEntry(selectedDate).then((existing) => {
       if (existing) setEntry(existing);
-      else setEntry((e) => ({ ...e, date: today }));
+      else setEntry({ date: selectedDate, wrist_stiffness: 0, left_pain: 0, right_pain: 0, mood: 3, notes: '' });
     });
-    fetchHistory(14).then(setHistory);
-  }, []);
+  }, [selectedDate]);
 
   const handleSave = async () => {
-    const toSave = { ...entry, date: getToday() };
+    const toSave = { ...entry, date: selectedDate };
     const ok = await postEntry(toSave);
     if (ok) {
       setEntry(toSave);
-      fetchHistory(14).then(setHistory);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     }
   };
 
+  // Navigate dates
+  const goDate = (offset: number) => {
+    const d = new Date(selectedDate + 'T00:00:00');
+    d.setDate(d.getDate() + offset);
+    const newDate = d.toISOString().split('T')[0];
+    if (newDate <= getToday()) setSelectedDate(newDate);
+  };
+
+  const isToday = selectedDate === getToday();
+  const dateObj = new Date(selectedDate + 'T00:00:00');
+  const dateLabel = isToday ? '今天' : `${dateObj.getMonth() + 1}月${dateObj.getDate()}日`;
+
   return (
     <div className="space-y-4">
-      {/* Today's Record */}
-      <div className="bg-white rounded-2xl p-5 shadow-sm border border-pink-50">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold text-gray-800">今天感觉怎么样？</h2>
-          <span className="text-xs text-gray-400">{getToday()}</span>
+      {/* Date Selector */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm border border-pink-50">
+        <div className="flex items-center justify-between">
+          <button onClick={() => goDate(-1)} className="text-gray-400 hover:text-gray-600 p-2 rounded-xl hover:bg-gray-50">
+            ← 前一天
+          </button>
+          <div className="text-center">
+            <div className="font-semibold text-gray-800">{dateLabel}</div>
+            <div className="text-xs text-gray-400">{selectedDate}</div>
+          </div>
+          <button
+            onClick={() => goDate(1)}
+            disabled={isToday}
+            className={`p-2 rounded-xl ${isToday ? 'text-gray-200' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}
+          >
+            后一天 →
+          </button>
         </div>
+      </div>
 
-        <div className="space-y-5">
-          <SliderField
-            label="手腕僵直" emoji="🤚" value={entry.stiffness}
-            onChange={(v) => setEntry({ ...entry, stiffness: v })}
-            color="#f59e0b"
+      {/* Symptom Record */}
+      <div className="bg-white rounded-2xl p-5 shadow-sm border border-pink-50">
+        <h2 className="font-semibold text-gray-800 mb-5">{isToday ? '今天感觉怎么样？' : `${dateLabel}的记录`}</h2>
+
+        <div className="space-y-6">
+          <PainSlider
+            label="手腕僵直" emoji="🤚" value={entry.wrist_stiffness}
+            onChange={(v) => setEntry({ ...entry, wrist_stiffness: v })}
+            trackColor="#f59e0b"
           />
-          <SliderField
-            label="手腕疼痛" emoji="💫" value={entry.pain}
-            onChange={(v) => setEntry({ ...entry, pain: v })}
-            color="#ef4444"
+          <PainSlider
+            label="左手指节疼痛" emoji="👈" value={entry.left_pain}
+            onChange={(v) => setEntry({ ...entry, left_pain: v })}
+            trackColor="#ef4444"
           />
-          <SliderField
-            label="疲劳程度" emoji="😴" value={entry.fatigue}
-            onChange={(v) => setEntry({ ...entry, fatigue: v })}
-            color="#8b5cf6"
+          <PainSlider
+            label="右手指节疼痛" emoji="👉" value={entry.right_pain}
+            onChange={(v) => setEntry({ ...entry, right_pain: v })}
+            trackColor="#8b5cf6"
           />
 
           {/* Mood */}
           <div className="space-y-2">
-            <span className="text-sm font-medium text-gray-700">💗 今天心情</span>
+            <span className="text-sm font-medium text-gray-700">💗 心情</span>
             <div className="flex justify-between px-2">
               {MOOD_EMOJIS.map((emoji, i) => (
                 <button
@@ -162,7 +194,7 @@ export default function SymptomDiary() {
 
           {/* Notes */}
           <div>
-            <span className="text-sm font-medium text-gray-700">📝 备注（可选）</span>
+            <span className="text-sm font-medium text-gray-700">📝 备注</span>
             <textarea
               value={entry.notes}
               onChange={(e) => setEntry({ ...entry, notes: e.target.value })}
@@ -181,58 +213,41 @@ export default function SymptomDiary() {
               : 'bg-pink-400 hover:bg-pink-500 text-white active:scale-[0.98]'
           }`}
         >
-          {saved ? '✓ 保存成功啦' : '保存今天的记录'}
+          {saved ? '✓ 保存成功啦' : '保存记录'}
         </button>
       </div>
 
-      {/* History Chart Toggle */}
-      <div className="bg-white rounded-2xl p-5 shadow-sm border border-pink-50">
-        <button
-          onClick={() => setShowChart(!showChart)}
-          className="w-full flex items-center justify-between"
-        >
-          <h3 className="font-medium text-gray-700 text-sm">📊 最近趋势</h3>
-          <span className="text-xs text-gray-400">{showChart ? '收起' : '展开'}</span>
-        </button>
-
-        {showChart && (
-          <div className="mt-4 space-y-3">
-            {history.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-4">还没有记录，开始记录今天的感受吧</p>
-            ) : (
-              <div className="space-y-2">
-                {/* Simple bar chart */}
-                <div className="text-xs text-gray-400 mb-2">最近 {history.length} 天的变化</div>
-                {history.slice(-7).map((h, i) => {
-                  const d = new Date(h.date + 'T00:00:00');
-                  const label = `${d.getMonth() + 1}/${d.getDate()}`;
-                  return (
-                    <div key={i} className="flex items-center gap-2 text-xs">
-                      <span className="w-10 text-gray-400 text-right">{label}</span>
-                      <div className="flex-1 flex gap-1 items-center">
-                        <div className="h-3 rounded-full bg-yellow-300" style={{ width: `${h.stiffness * 10}%`, minWidth: h.stiffness ? '4px' : 0 }} title={`僵直:${h.stiffness}`} />
-                      </div>
-                      <div className="flex-1 flex gap-1 items-center">
-                        <div className="h-3 rounded-full bg-red-300" style={{ width: `${h.pain * 10}%`, minWidth: h.pain ? '4px' : 0 }} title={`疼痛:${h.pain}`} />
-                      </div>
-                      <span className="w-6 text-center">{MOOD_EMOJIS[(h.mood || 3) - 1]}</span>
-                    </div>
-                  );
-                })}
-                <div className="flex gap-4 mt-2 text-xs text-gray-400 justify-center">
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-300" /> 僵直</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-300" /> 疼痛</span>
-                </div>
+      {/* Quick Summary */}
+      {(entry.wrist_stiffness > 0 || entry.left_pain > 0 || entry.right_pain > 0) && (
+        <div className="bg-gradient-to-r from-amber-50 to-pink-50 rounded-2xl p-4 border border-amber-100">
+          <div className="text-sm text-gray-600 mb-2 font-medium">今日概览</div>
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <div>
+              <div className="text-lg font-bold" style={{ color: getPainLevel(entry.wrist_stiffness).color }}>
+                {entry.wrist_stiffness}
               </div>
-            )}
+              <div className="text-xs text-gray-400">手腕僵直</div>
+            </div>
+            <div>
+              <div className="text-lg font-bold" style={{ color: getPainLevel(entry.left_pain).color }}>
+                {entry.left_pain}
+              </div>
+              <div className="text-xs text-gray-400">左手疼痛</div>
+            </div>
+            <div>
+              <div className="text-lg font-bold" style={{ color: getPainLevel(entry.right_pain).color }}>
+                {entry.right_pain}
+              </div>
+              <div className="text-xs text-gray-400">右手疼痛</div>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Tip */}
       <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-4 border border-purple-100">
         <p className="text-sm text-gray-600 leading-relaxed">
-          💡 <strong>小贴士：</strong>每天记录症状可以帮助医生更好地了解病情变化。复诊的时候可以把趋势图给医生看哦。
+          💡 <strong>小贴士：</strong>每天记录症状可以帮助医生更好地了解病情变化。复诊的时候把趋势图给医生看，比口头描述更准确哦。
         </p>
       </div>
     </div>

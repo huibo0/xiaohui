@@ -3,13 +3,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import MedicationTracker from '@/components/MedicationTracker';
 import SymptomDiary from '@/components/SymptomDiary';
+import DataTrend from '@/components/DataTrend';
+import UVIndex from '@/components/UVIndex';
 import DietGuide from '@/components/DietGuide';
 import LifeTips from '@/components/LifeTips';
 import Settings from '@/components/Settings';
 
 const TABS = [
   { id: 'meds', label: '吃药', icon: '💊' },
-  { id: 'diary', label: '日记', icon: '📝' },
+  { id: 'diary', label: '记录', icon: '📝' },
+  { id: 'trend', label: '趋势', icon: '📊' },
+  { id: 'uv', label: '防晒', icon: '☀️' },
   { id: 'diet', label: '饮食', icon: '🥗' },
   { id: 'tips', label: '小贴士', icon: '🌸' },
   { id: 'settings', label: '设置', icon: '⚙️' },
@@ -36,6 +40,8 @@ export default function Home() {
     switch (activeTab) {
       case 'meds': return <MedicationTracker />;
       case 'diary': return <SymptomDiary />;
+      case 'trend': return <DataTrend />;
+      case 'uv': return <UVIndex />;
       case 'diet': return <DietGuide />;
       case 'tips': return <LifeTips />;
       case 'settings': return <Settings />;
@@ -64,7 +70,7 @@ export default function Home() {
 
       {/* Bottom Tab Bar */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-t border-pink-100 tab-bar">
-        <div className="max-w-lg mx-auto flex justify-around py-2">
+        <div className="max-w-lg mx-auto flex justify-between py-2 px-1 overflow-x-auto no-scrollbar">
           {TABS.map((tab) => (
             <button
               key={tab.id}
