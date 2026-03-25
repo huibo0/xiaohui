@@ -34,16 +34,26 @@ export default function Home() {
     else setGreeting('夜深了，早点休息哦');
   }, []);
 
+  // Use a counter to force MedicationTracker to re-fetch settings when switching back
+  const [medsKey, setMedsKey] = useState(0);
+
+  const handleTabChange = (tab: TabId) => {
+    setActiveTab(tab);
+    if (tab === 'meds') {
+      setMedsKey((k) => k + 1);
+    }
+  };
+
   const renderContent = useCallback(() => {
     switch (activeTab) {
-      case 'meds': return <MedicationTracker />;
+      case 'meds': return <MedicationTracker key={medsKey} />;
       case 'diary': return <SymptomDiary />;
       case 'uv': return <UVIndex />;
       case 'diet': return <DietGuide />;
       case 'tips': return <LifeTips />;
       case 'settings': return <Settings />;
     }
-  }, [activeTab]);
+  }, [activeTab, medsKey]);
 
   return (
     <main className="min-h-screen pb-20 max-w-lg mx-auto">
@@ -71,7 +81,7 @@ export default function Home() {
           {TABS.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleTabChange(tab.id)}
               className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl transition-all ${
                 activeTab === tab.id
                   ? 'text-pink-500 scale-105'
