@@ -18,6 +18,7 @@ import {
   sendFinalReminder,
   notifyHusband,
 } from './wechat';
+import { sendMedReminderAPNs, notifyHusbandAPNs } from './apns';
 
 let initialized = false;
 
@@ -83,6 +84,8 @@ export function startScheduler() {
         console.log(`[Scheduler] 发送${periodLabel}第1次提醒（先喂奶再吃药）`);
         const result = await sendFirstReminder(period);
         logPush('wife_reminder_1', `${periodLabel}第1次提醒-先喂奶再吃药`, result.success, result.error);
+        // iOS push
+        await sendMedReminderAPNs(period, 'first').catch(e => console.log(`[APNs] Error: ${e.message}`));
       }
 
       // 第2次：吃药时间 + checkDelay
@@ -90,6 +93,7 @@ export function startScheduler() {
         console.log(`[Scheduler] 发送${periodLabel}第2次提醒（催促吃药）`);
         const result = await sendFollowupReminder(period);
         logPush('wife_reminder_2', `${periodLabel}第2次提醒-催促吃药`, result.success, result.error);
+        await sendMedReminderAPNs(period, 'followup').catch(e => console.log(`[APNs] Error: ${e.message}`));
       }
 
       // 第3次：吃药时间 + checkDelay × 2
@@ -97,6 +101,7 @@ export function startScheduler() {
         console.log(`[Scheduler] 发送${periodLabel}第3次提醒（最后催促）`);
         const result = await sendFinalReminder(period);
         logPush('wife_reminder_3', `${periodLabel}第3次提醒-最后催促`, result.success, result.error);
+        await sendMedReminderAPNs(period, 'final').catch(e => console.log(`[APNs] Error: ${e.message}`));
       }
 
       // ===== 丈夫提醒（从 checkDelay 开始，每 5 分钟一次） =====
@@ -106,6 +111,7 @@ export function startScheduler() {
         console.log(`[Scheduler] 通知丈夫-${periodLabel}未吃药（超时${overdueMinutes}分钟）`);
         const result = await notifyHusband(period, overdueMinutes);
         logPush('husband_reminder', `通知丈夫-${periodLabel}未吃药(超时${overdueMinutes}min)`, result.success, result.error);
+        await notifyHusbandAPNs(period, overdueMinutes).catch(e => console.log(`[APNs] Error: ${e.message}`));
       }
     }
   }, { timezone: process.env.TZ || 'Asia/Shanghai' });

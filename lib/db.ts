@@ -63,6 +63,13 @@ export function getDb(): Database.Database {
       updated_at TEXT DEFAULT (datetime('now', 'localtime'))
     );
 
+    CREATE TABLE IF NOT EXISTS ios_devices (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      device_token TEXT NOT NULL UNIQUE,
+      device_name TEXT,
+      created_at TEXT DEFAULT (datetime('now', 'localtime'))
+    );
+
     CREATE INDEX IF NOT EXISTS idx_med_logs_date ON med_logs(date);
     CREATE INDEX IF NOT EXISTS idx_symptom_logs_date ON symptom_logs(date);
   `);
@@ -261,6 +268,28 @@ export function setMultipleSettings(settings: Record<string, string>): void {
     }
   });
   tx();
+}
+
+// ========== iOS Devices ==========
+
+export function registerDevice(token: string, name?: string): void {
+  const db = getDb();
+  db.prepare(`
+    INSERT INTO ios_devices (device_token, device_name)
+    VALUES (?, ?)
+    ON CONFLICT(device_token) DO UPDATE SET device_name = ?
+  `).run(token, name || null, name || null);
+}
+
+export function unregisterDevice(token: string): void {
+  const db = getDb();
+  db.prepare('DELETE FROM ios_devices WHERE device_token = ?').run(token);
+}
+
+export function getAllDeviceTokens(): string[] {
+  const db = getDb();
+  const rows = db.prepare('SELECT device_token FROM ios_devices').all() as any[];
+  return rows.map(r => r.device_token);
 }
 
 // ========== Export (for migration) ==========
