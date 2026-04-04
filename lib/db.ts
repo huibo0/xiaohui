@@ -175,6 +175,48 @@ export function getWeekMedLogs(): { date: string; morning: boolean; evening: boo
   return logs;
 }
 
+export interface MedStats {
+  totalDays: number;
+  takenDays: number;
+  startDate: string | null;
+  streak: number;
+}
+
+export function getMedStats(): MedStats {
+  const db = getDb();
+
+  const firstRow = db.prepare('SELECT MIN(date) as first_date FROM med_logs').get() as any;
+  const startDate: string | null = firstRow?.first_date || null;
+
+  if (!startDate) {
+    return { totalDays: 0, takenDays: 0, startDate: null, streak: 0 };
+  }
+
+  const today = localDateStr(new Date());
+
+  const start = new Date(startDate);
+  const end = new Date(today);
+  const totalDays = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+  const takenRow = db.prepare('SELECT COUNT(DISTINCT date) as count FROM med_logs WHERE taken = 1').get() as any;
+  const takenDays: number = takenRow.count;
+
+  const takenDates = new Set(
+    (db.prepare('SELECT DISTINCT date FROM med_logs WHERE taken = 1').all() as any[]).map(r => r.date)
+  );
+
+  let streak = 0;
+  const cursor = new Date();
+  while (true) {
+    const dateStr = localDateStr(cursor);
+    if (!takenDates.has(dateStr)) break;
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  return { totalDays, takenDays, startDate, streak };
+}
+
 // ========== Symptom Logs ==========
 
 export interface SymptomLog {
