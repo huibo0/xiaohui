@@ -8,7 +8,7 @@
  *   第2次（+checkDelay） ：催促吃药
  *   第3次（+checkDelay×2）：最后催促
  *
- * 【丈夫】从 checkDelay 开始，每 5 分钟提醒一次，直到妻子吃药
+ * 【丈夫】从 checkDelay 开始，每 husbandInterval 分钟提醒一次，直到妻子吃药
  */
 import cron from 'node-cron';
 import { getMedLog, getSetting, logPush } from './db';
@@ -41,15 +41,17 @@ export function startScheduler() {
     console.log(`[Scheduler] 检查时间: ${today} ${currentTime} (${TZ})`);
 
     // Read settings from DB (falls back to env if DB not ready)
-    let morningTime: string, eveningTime: string, checkDelay: number;
+    let morningTime: string, eveningTime: string, checkDelay: number, husbandInterval: number;
     try {
       morningTime = getSetting('morningTime') || process.env.MORNING_TIME || '08:00';
       eveningTime = getSetting('eveningTime') || process.env.EVENING_TIME || '20:00';
       checkDelay = parseInt(getSetting('checkDelay') || process.env.CHECK_DELAY_MINUTES || '30', 10);
+      husbandInterval = parseInt(getSetting('husbandInterval') || '5', 10);
     } catch {
       morningTime = process.env.MORNING_TIME || '08:00';
       eveningTime = process.env.EVENING_TIME || '20:00';
       checkDelay = parseInt(process.env.CHECK_DELAY_MINUTES || '30', 10);
+      husbandInterval = 5;
     }
 
     // Helper: minutes since a given HH:MM time
@@ -106,7 +108,7 @@ export function startScheduler() {
 
       // ===== 丈夫提醒（从 checkDelay 开始，每 5 分钟一次） =====
 
-      if (elapsed >= checkDelay && (elapsed - checkDelay) % 5 === 0) {
+      if (elapsed >= checkDelay && (elapsed - checkDelay) % husbandInterval === 0) {
         const overdueMinutes = elapsed;
         console.log(`[Scheduler] 通知丈夫-${periodLabel}未吃药（超时${overdueMinutes}分钟）`);
         const result = await notifyHusband(period, overdueMinutes);

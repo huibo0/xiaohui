@@ -108,6 +108,7 @@ export function getDb(): Database.Database {
       morningTime: process.env.MORNING_TIME || '08:00',
       eveningTime: process.env.EVENING_TIME || '20:00',
       checkDelay: process.env.CHECK_DELAY_MINUTES || '30',
+      husbandInterval: '5',
       pillNickname: '小药丸',
       pillColor: '#f472b6',
       browserNotify: 'false',
