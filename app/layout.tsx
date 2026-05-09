@@ -1,5 +1,13 @@
 import type { Metadata, Viewport } from 'next';
+import { Noto_Sans_SC } from 'next/font/google';
 import './globals.css';
+
+const notoSansSC = Noto_Sans_SC({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  display: 'swap',
+  variable: '--font-noto-sans-sc',
+});
 
 export const metadata: Metadata = {
   title: '小惠 - 你的健康小助手',
@@ -23,7 +31,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="zh-CN">
+    <html lang="zh-CN" className={notoSansSC.variable}>
       <body className="antialiased">{children}</body>
     </html>
   );
